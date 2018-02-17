@@ -13,6 +13,9 @@ from kmeans import *
 DATA_FOLDER = 'train_data'
 gestures = ['beat3', 'beat4', 'circle', 'eight', 'inf', 'wave']
 
+N = 10 # Number of hidden states
+M = 30 # Number of observation classes
+
 def getAllFilesInFolder(folder):
 	fileList = []
 	for fName in os.listdir(folder):
@@ -39,6 +42,48 @@ def seeOrientation(filename):
 	filterResult = checkGyroIntegration(gyroData, timestamps)
 	plotPredictions(filterResult, timestamps)
 
+def forwardBackward(pi, A, B, Ob):
+	pi = pi.reshape(N)
+	B = B.reshape(N, M)
+	T = Ob.size
+	Ob = Ob.reshape(T)
+
+	alpha = np.zeros((T, N))
+	beta = np.zeros((T, N))
+	gamma = np.zeros((T, N))
+
+	# Initialize
+	alpha[0, :] = np.multiply(pi, B[:, Ob[0]])
+	beta[T-1, :] = 1
+
+	# Forward pass
+	for t in range(T - 1):
+		alpha[t+1, :] = np.multiply(np.matmul(alpha[t, :], A), B[:, Ob[t+1]])
+
+	# Backward pass
+	for t in reversed(range(T-1)):
+		beta[t, :] = np.matmul(A, np.multiply(B[:, Ob[t+1]], beta[t+1, :]))
+
+	# Compute gamma (posterior probability of hidden state)
+	gamma = np.multiply(alpha, beta)
+	gamma = np.divide(gamma, np.sum(gamma, axis=1))
+
+	return alpha, beta, gamma
+
+def computeZeta(A, B, alpha, beta, Ob):
+	zeta = np.zeros((T, N, N))
+
+	# Initialize
+	zeta[T-1, ;, :] = 1
+
+	# Compute
+	for t in range(T - 1):
+		alphaA = np.multiply(alpha[t, :].reshape(N, 1), A)
+		BBeta = np.multiply(B[:, Ob[t+1]], beta[t+1, :])
+		zeta[t, :, :] = np.multiply(alphaA, BBeta)
+		zeta[t, :, :] = zeta[t, :, :]/(np.sum(zeta[t, :, :]))
+
+	return zeta
 
 def BaumWelch():
 	pass
