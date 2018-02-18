@@ -29,7 +29,23 @@ def getInitialCenters(dimension, numClusters, data):
 
 	return initialCenters
 
-def runKMeans(numClusters, data)	:
+def assignPointsToNearestCluster(data, centers):
+	dimension = data.shape[1]
+	numPoints = data.shape[0]
+	numClusters = centers.shape[0]
+
+	reshapedDataPoints = np.tile(data.reshape(numPoints, dimension, 1), (1, 1, numClusters))
+	reshapedCenters = np.tile(np.transpose(centers).reshape(1, dimension, numClusters), (numPoints, 1, 1))
+	calNearest = reshapedDataPoints - reshapedCenters
+	calNearest = np.square(calNearest)
+	calNearest = np.sum(calNearest, axis=1)
+	calNearest = np.sqrt(calNearest).reshape(numPoints, numClusters)
+	currentAssignment = np.argmin(calNearest, axis=1).reshape(numPoints) + 1
+	# So, no cluster is assigned an id 0
+
+	return currentAssignment
+
+def runKMeans(numClusters, data):
 	threshold = 1e-10
 
 	dimension = data.shape[1]
@@ -43,13 +59,7 @@ def runKMeans(numClusters, data)	:
 	while True:
 
 		# Assign each point to its nearest center
-		reshapedDataPoints = np.tile(data.reshape(numPoints, dimension, 1), (1, 1, numClusters))
-		reshapedCenters = np.tile(np.transpose(currentCenters).reshape(1, dimension, numClusters), (numPoints, 1, 1))
-		calNearest = reshapedDataPoints - reshapedCenters
-		calNearest = np.square(calNearest)
-		calNearest = np.sum(calNearest, axis=1)
-		calNearest = np.sqrt(calNearest).reshape(numPoints, numClusters)
-		currentAssignment = np.argmin(calNearest, axis=1).reshape(numPoints)
+		currentAssignment = assignPointsToNearestCluster(data, currentCenters)
 
 		# Calculate the new mean of each cluster
 		newCenters = np.zeros((numClusters, dimension))
