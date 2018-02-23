@@ -19,8 +19,8 @@ gestures = ['beat3', 'beat4', 'circle', 'eight', 'inf', 'wave']
 
 N = 10 # Number of hidden states
 M = 30 # Number of observation classes
-N = 4 # Dummy
-M = 5 # Dummy
+# N = 4 # Dummy
+# M = 5 # Dummy
 
 ########################################################################################################
 
@@ -194,7 +194,7 @@ def trainHMMmodelsWithDummyData():
 	somedata = generate_observations('oober', 19) + 1
 	print calObservationPr((pi2, A2, B2), somedata)
 	print calObservationPr((pi, A, B), somedata)
-	
+
 # Dummy data to check algorithm
 ########################################################################################################
 
@@ -268,8 +268,7 @@ def logForwardPass(logAlpha, A, B, Ob):
 	T = np.count_nonzero(Ob)
 
 	for t in range(T - 1):
-		for i in range(N):
-			logAlpha[t+1, i] = logsumexp(logAlpha[t, :].reshape(N, 1) + np.log(A[:, i]).reshape(N, 1))
+		logAlpha[t+1, :] = logsumexp(np.add(logAlpha[t, :].reshape(N, 1), np.log(A)), axis=0)
 		logAlpha[t+1, :] = logAlpha[t+1, :] + np.log(B[:, Ob[t+1]-1])
 
 	return logAlpha
@@ -278,8 +277,7 @@ def logBackwardPass(logBeta, A, B, Ob):
 	T = np.count_nonzero(Ob)
 
 	for t in reversed(range(T-1)):
-		for i in range(N):
-			logBeta[t, i] = logsumexp(np.log(A[i, :]).reshape(N, 1) + np.log(B[:, Ob[t+1]-1]).reshape(N, 1) + logBeta[t+1, :].reshape(N, 1))
+		logBeta[t, :] = logsumexp(np.log(np.transpose(A)) + np.log(B[:, Ob[t+1]-1]).reshape(N, 1) + logBeta[t+1, :].reshape(N, 1), axis=0)
 
 	return logBeta
 
@@ -376,9 +374,9 @@ def calObservationPr(t, x):
 	# Forward pass
 	logAlpha = logForwardPass(logAlpha, A, B, Ob)
 
-	likelihood = np.exp(logsumexp(logAlpha[TT-1, :]))
+	logLikelihood = (logsumexp(logAlpha[TT-1, :]))
 
-	return likelihood
+	return logLikelihood
 
 
 ########################################################################################################
@@ -396,7 +394,7 @@ def BaumWelch(ObservationArray):
 	ll_old = 0
 	threshold = 1e-5
 	iterCount = 0
-	maxIterations = 100
+	maxIterations = 25
 	TT = ObservationArray.shape[1]
 	E = ObservationArray.shape[0]
 
@@ -416,7 +414,9 @@ def BaumWelch(ObservationArray):
 		# Maximization step
 		pi = computeNewPi(logGammaArray)
 		A = computeNewA(logGammaArray, logZetaArray, ObservationArray)
+		# print np.sum(A, axis=1)
 		B = computeNewB(logGammaArray, ObservationArray)
+		# print np.sum(B, axis=1)
 
 		# Evaluate log-likelihood
 		ll_new = np.sum(np.exp(logsumexp(logAlphaT, axis=1))) / E
@@ -458,8 +458,8 @@ def trainHMMmodels():
 					maxT = discretizedData.size
 
 		observationArray = np.zeros((len(observationList), maxT), dtype=int)
-		for i, o in enumerate(observationList):
-			observationArray[i, 0:(o.size)] = o
+		for oi, o in enumerate(observationList):
+			observationArray[oi, 0:(o.size)] = o
 
 		pi, A, B = BaumWelch(observationArray)
 		trainedModels[i] = (pi, A, B)
@@ -467,15 +467,15 @@ def trainHMMmodels():
 	return kmeans, trainedModels
 
 def predict(trainedModels, data, kmeans):
-	threshold = 0.6
-	bestTillNow = -1
-	bestScore = -1
+	threshold = -np.inf
+	bestTillNow = -np.inf
+	bestScore = -np.inf
 
 	x = kmeans.predict(data[:, 1:7]) + 1
 
 	for i, t in enumerate(trainedModels):
 		p = calObservationPr(t, x)
-		print 'Score for ' + gestures[i] + ': ' + p
+		print 'Score for ' + gestures[i] + ': ' + str(p)
 
 		if p > bestScore:
 			bestScore = p
@@ -490,12 +490,21 @@ if __name__ == "__main__":
 	filename = "inf11.txt"
 	filename = "wave01.txt"
 
-	trainHMMmodelsWithDummyData()
-	exit()
+	# trainHMMmodelsWithDummyData()
+	# exit()
 
 	# seeOrientation(filename)
 
 	kmeans, trainedModels = trainHMMmodels()
 
+	filename = "wave01.txt"
+	dataInTestFile = dataToNpArray(os.path.join(DATA_FOLDER, filename))
+	print 'Prediction for ' + filename + ' is: ' + predict(trainedModels, dataInTestFile, kmeans)
+
+	filename = "inf16.txt"
+	dataInTestFile = dataToNpArray(os.path.join(DATA_FOLDER, filename))
+	print 'Prediction for ' + filename + ' is: ' + predict(trainedModels, dataInTestFile, kmeans)
+
+	filename = "circle18.txt"
 	dataInTestFile = dataToNpArray(os.path.join(DATA_FOLDER, filename))
 	print 'Prediction for ' + filename + ' is: ' + predict(trainedModels, dataInTestFile, kmeans)
