@@ -1,5 +1,6 @@
 import os
 import csv
+import pdb
 import math
 import numpy as np
 from scipy.misc import logsumexp
@@ -18,6 +19,8 @@ gestures = ['beat3', 'beat4', 'circle', 'eight', 'inf', 'wave']
 
 N = 10 # Number of hidden states
 M = 30 # Number of observation classes
+N = 4 # Dummy
+M = 5 # Dummy
 
 ########################################################################################################
 
@@ -31,8 +34,8 @@ def getAllFilesInFolder(folder):
 def dataToNpArray(filename):
 	fileData = []
 	with open(filename) as tsv:
-	    for line in csv.reader(tsv, delimiter="\t"):
-	    	fileData.append(line)
+		for line in csv.reader(tsv, delimiter="\t"):
+			fileData.append(line)
 	return np.array(fileData, dtype=np.float64)
 
 def seeOrientation(filename):
@@ -47,18 +50,6 @@ def seeOrientation(filename):
 	filterResult = checkGyroIntegration(gyroData, timestamps)
 	plotPredictions(filterResult, timestamps)
 
-def getClusterCenters():
-	data = None
-	fileList = getAllFilesInFolder(DATA_FOLDER)
-	for f in fileList:
-		if data is None:
-			data = dataToNpArray(os.path.join(DATA_FOLDER, filename))[:, 1:7]
-		else:
-			data = np.vstack((data, dataToNpArray(os.path.join(DATA_FOLDER, filename))[:, 1:7]))
-	
-	clusters, clusterCenters = runKMeans(M, data)
-	return clusterCenters
-
 def kMeans():
 	data = None
 	fileList = getAllFilesInFolder(DATA_FOLDER)
@@ -72,6 +63,72 @@ def kMeans():
 	return kmeans
 
 ########################################################################################################
+# Dummy data to check algorithm
+
+def generate_observations(model_name, T):
+	"""
+	The Ride model from west Philly to Engineering.
+	State : Chesnut St., Walnut St., Spruce St., Pine St. 
+	Observation : Students (five - S, W, P, W, C) 
+	model_name : name of a model
+	T : length of a observation sequence to generate
+	"""
+	if model_name == 'oober':
+		A = np.array([[0.4, 0.4, 0.1, 0.1],
+						[0.3, 0.3, 0.3, 0.1],
+						[0.1, 0.3, 0.3, 0.3],
+						[0.1, 0.1, 0.4, 0.4]], dtype=np.float32)
+
+		B = np.array([[0.0, 0.2, 0.0, 0.2, 0.6],
+						[0.1, 0.4, 0.0, 0.4, 0.1],
+						[0.5, 0.2, 0.1, 0.2, 0.0],
+						[0.3, 0.1, 0.5, 0.1, 0.0]], dtype=np.float32)
+
+		Pi = np.array([0.3, 0.4, 0.1, 0.2], dtype=np.float32)
+
+	elif model_name == 'nowaymo':
+		A = np.array([[0.5, 0.1, 0.1, 0.3],
+						[0.2, 0.6, 0.1, 0.1],
+						[0.05, 0.1, 0.8, 0.05],
+						[0, 0.1, 0.2, 0.7]], dtype=np.float32)
+
+		B = np.array([[0.0, 0.2, 0.0, 0.2, 0.6],
+						[0.1, 0.4, 0.0, 0.4, 0.1],
+						[0.5, 0.2, 0.1, 0.2, 0.0],
+						[0.3, 0.1, 0.5, 0.1, 0.0]], dtype=np.float32)
+
+		Pi = np.array([0.2, 0.2, 0.1, 0.5], dtype=np.float32)
+
+	elif model_name == 'dummy':
+		A = np.array([[0.0, 1.0, 0.0, 0.0],
+						[0.0, 0.0, 1.0, 0.0],
+						[0.0, 0.0, 0.0, 1.0],
+						[0.0, 0.0, 0.0, 1.0]], dtype=np.float32)
+
+		B = np.array([[1.0, 0.0, 0.0, 0.0, 0.0],
+						[0.0, 1.0, 0.0, 0.0, 0.0],
+						[0.0, 0.0, 1.0, 0.0, 0.0],
+						[0.0, 0.0, 0.0, 1.0, 0.0]], dtype=np.float32)
+
+		Pi = np.array([0.25,0.25,0.25,0.25], dtype=np.float32)
+
+	state = inv_sampling(Pi)
+	obs_sequence = []
+	for t in xrange(T):
+		obs_sequence.append(inv_sampling(B[state,:]))
+		state = inv_sampling(A[state,:])
+	return np.array(obs_sequence)
+
+
+def inv_sampling(pdf):
+	r = np.random.rand() 
+	for (i,p) in enumerate(np.cumsum(pdf)):
+		if r <= p:
+			return i
+
+# Dummy data to check algorithm
+########################################################################################################
+
 # Not in log space
 # For reference 
 
@@ -138,6 +195,25 @@ def computeNewBOld(gammaArray, ObArray):
 # For reference 
 ########################################################################################################
 
+def logForwardPass(logAlpha, A, B, Ob):
+	T = np.count_nonzero(Ob)
+
+	for t in range(T - 1):
+		for i in range(N):
+			logAlpha[t+1, i] = logsumexp(logAlpha[t, :] + np.log(A[:, i]))
+		logAlpha[t+1, :] = logAlpha[t+1, :] + np.log(B[:, Ob[t+1]-1])
+
+	return logAlpha
+
+def logBackwardPass(logBeta, A, B, Ob):
+	T = np.count_nonzero(Ob)
+
+	for t in reversed(range(T-1)):
+		for i in range(N):
+			logBeta[t, i] = logsumexp(np.log(A[i, :]) + np.log(B[:, Ob[t+1]-1]) + logBeta[t+1, :])
+
+	return logBeta
+
 def logForwardBackward(pi, A, B, Ob):
 	pi = pi.reshape(N)
 	B = B.reshape(N, M)
@@ -154,56 +230,90 @@ def logForwardBackward(pi, A, B, Ob):
 	logBeta[T-1, :] = math.log(1)
 
 	# Forward pass
-	for t in range(T - 1):
-		for i in range(N):
-			logAlpha[t+1, i] = logsumexp(logAlpha[t, :] + np.log(A[:, i]))
-		logAlpha[t+1, :] = logAlpha[t+1, :] + np.log(B[:, Ob[t+1]-1])
+	logAlpha = logForwardPass(logAlpha, A, B, Ob)
 
 	# Backward pass
-	for t in reversed(range(T-1)):
-		for i in range(N):
-			logBeta[t, i] = logsumexp(np.log(A[i, :]) + np.log(B[:, Ob[t+1]-1]) + logBeta[t+1, :])
+	logBeta = logBackwardPass(logBeta, A, B, Ob)
 
 	# Compute logGamma (posterior probability of hidden state)
 	logGamma = np.add(logAlpha, logBeta)
-	logGamma = np.subtract(logGamma, logsumexp(logGamma, axis=1).reshape(logGamma.shape[0], 1))
+	logGamma[0:T, :] = np.subtract(logGamma[0:T, :], logsumexp(logGamma[0:T, :], axis=1).reshape(T, 1))
 
 	return logAlpha, logBeta, logGamma
 
 def computeLogZeta(A, B, logAlpha, logBeta, Ob):
 	TT = Ob.size
 	T = np.count_nonzero(Ob)
-	logZeta = np.zeros((TT, N, N))
+	logZeta = np.full((TT, N, N), -1 * np.inf)
 
 	# Initialize
-	logZeta = np.tile(logAlpha.reshape(logAlpha.shape[0], logAlpha.shape[1], 1), (1, 1, N))
-	logZeta = logZeta + np.tile(logBeta.reshape(logBeta.shape[0], 1, logBeta.shape[1]), (1, N, 1))	
-	logZeta = logZeta + np.tile(np.log(A).reshape(1, A.shape[0], A.shape[1]), (TT, 1, 1))	
-	logZeta = logZeta + np.tile(np.log(np.transpose(B[:, Ob - 1])).reshape(logBeta.shape[0], 1, logBeta.shape[1]), (1, N, 1))	
-	logZeta = np.subtract(logZeta, np.tile(logsumexp(logZeta, axis=(1, 2)).reshape(TT, 1, 1), (1, N, N)))
+	logZeta = np.tile(logAlpha.reshape(TT, N, 1), (1, 1, N))
+	logZeta = logZeta + np.tile(logBeta.reshape(TT, 1, N), (1, N, 1))	
+	logZeta = logZeta + np.tile(np.log(A).reshape(1, N, N), (TT, 1, 1))	
+	logZeta = logZeta + np.tile(np.log(np.transpose(B[:, Ob - 1])).reshape(TT, 1, N), (1, N, 1))	
+	logZeta[0:T, :, :] = np.subtract(logZeta[0:T, :, :], np.tile(logsumexp(logZeta[0:T, :, :], axis=(1, 2)).reshape(T, 1, 1), (1, N, N)))
 
 	return logZeta
 
 def computeNewPi(logGammaArray):
 	return np.exp(logsumexp(logGammaArray[:, 0, :], axis=0).reshape(N))/logGammaArray.shape[0]
 
-def computeNewA(logGammaArray, logZetaArray):
-	numerator = np.exp(logsumexp(logZetaArray, axis=(0,1)))
-	denominator = np.sum(numerator, axis=1)
+def computeNewA(logGammaArray, logZetaArray, ObArray):
+	E = ObArray.shape[0]
+
+	numerator = np.zeros((N, N))
+	for e in range(E):
+		T = np.count_nonzero(ObArray[e])
+		numerator = numerator + np.exp(logsumexp(logZetaArray[e, 0:T-1, :, :], axis=(0,1)))
+
+	denominator = np.ones((N))
+	for e in range(E):
+		T = np.count_nonzero(ObArray[e])
+		denominator = denominator + np.exp(logsumexp(logGammaArray[e, 0:T-1, :], axis=(0,1)))
+
 	return numerator/denominator
 
 def computeNewB(logGammaArray, ObArray):
-	numerator = np.zeros((N, M))
-	for x in range(M):
-		x = x + 1
-		replicatedObArray = np.tile((ObArray == x).reshape(ObArray.shape[0], ObArray.shape[1], 1), (1, 1, N))
-		numerator[:, x-1] = np.exp(logsumexp(np.multiply(logGammaArray, replicatedObArray), axis=(0,1)))
+	E = ObArray.shape[0]
 
-	denominator = np.sum(numerator, axis=1)
+	numerator = np.full((N, M), -1 * np.inf)
+	for e in range(E):
+		T = np.count_nonzero(ObArray[e])
+		for i in range(N):
+			for x in range(M):
+				correct_t = (ObArray[e, :] == (x+1))
+				# print np.count_nonzero(correct_t),
+				if np.count_nonzero(correct_t) > 0:
+					if numerator[i, x] != (-np.inf):
+						numerator[i, x] = np.logaddexp(numerator[i, x], logsumexp(logGammaArray[e, correct_t, i]))
+					else:
+						numerator[i, x] = logsumexp(logGammaArray[e, correct_t, i])
+	numerator = np.exp(numerator)
+
+	denominator = np.ones((N))
+	for e in range(E):
+		T = np.count_nonzero(ObArray[e])
+		denominator = denominator + np.exp(logsumexp(logGammaArray[e, 0:T, :], axis=(0,1)))
+
 	return numerator/denominator[:,None]
 
-def getLogLikelihood(pi, A, B):
-	return 0
+def calObservationPr(t, x):
+	pi = t[0]
+	A = t[1]
+	B = t[2]
+	Ob = x.reshape(x.size)
+	TT = Ob.size
+
+	logAlpha = np.full((TT, N), -1 * np.inf)
+	# Initialize
+	logAlpha[0, :] = np.log(pi) + np.log(B[:, Ob[0]-1])
+	# Forward pass
+	logAlpha = logForwardPass(logAlpha, A, B, Ob)
+
+	likelihood = np.exp(logsumexp(logAlpha[TT-1, :]))
+
+	return likelihood
+
 
 ########################################################################################################
 
@@ -214,20 +324,21 @@ def BaumWelch(ObservationArray):
 	A = A / np.sum(A, axis=1)
 	B = np.random.rand(N, M) + 0.001
 	B = B / np.sum(B, axis=1).reshape(N, 1)
-	pi = np.random.rand(N) + 0.001
+	pi = np.ones(N)
 	pi = pi / np.sum(pi)
 
 	ll_old = 0
 	threshold = 1e-5
-	numIterations = 0
+	iterCount = 0
 	maxIterations = 100
 	TT = ObservationArray.shape[1]
+	E = ObservationArray.shape[0]
 
-	while numIterations < maxIterations:
+	while iterCount < maxIterations:
 
-		logGammaArray = np.zeros((ObservationArray.shape[0], TT, N))
-		logZetaArray = np.zeros((ObservationArray.shape[0], TT, N, N))
-		logAlphaT = np.zeros((ObservationArray.shape[0], N))
+		logGammaArray = np.zeros((E, TT, N))
+		logZetaArray = np.zeros((E, TT, N, N))
+		logAlphaT = np.zeros((E, N))
 
 		# Expectation step
 		for i, example in enumerate(ObservationArray):
@@ -238,13 +349,14 @@ def BaumWelch(ObservationArray):
 
 		# Maximization step
 		pi = computeNewPi(logGammaArray)
-		A = computeNewA(logGammaArray, logZetaArray)
+		A = computeNewA(logGammaArray, logZetaArray, ObservationArray)
 		B = computeNewB(logGammaArray, ObservationArray)
+		print np.sum(B, axis=1)
+		exit()
 
 		# Evaluate log-likelihood
-		# ll_new = getLogLikelihood(pi, A, B)
-		ll_new = np.sum(np.exp(logsumexp(logAlphaT, axis=1))) / ObservationArray.shape[0]
-		print 'Log-likelihood at iteration ' + str(numIterations) + ' is ' + str(ll_new)
+		ll_new = np.sum(np.exp(logsumexp(logAlphaT, axis=1))) / E
+		print 'Log-likelihood at iteration ' + str(iterCount) + ' is ' + str(ll_new)
 
 		# break if low change
 		if abs(ll_new - ll_old) < threshold:
@@ -252,17 +364,30 @@ def BaumWelch(ObservationArray):
 		else:
 			ll_old = ll_new
 
-		numIterations = numIterations + 1
+		iterCount = iterCount + 1
 
 	# return final model parameters
 	return pi, A, B
 
 ########################################################################################################
 
+def trainHMMmodelsWithDummyData():
+	observationArray = np.zeros((5, 20), dtype=int)
+	observationArray[0, 0:17] = generate_observations('oober', 17) + 1
+	observationArray[1, 0:15] = generate_observations('oober', 15) + 1
+	observationArray[2, 0:20] = generate_observations('oober', 20) + 1
+	observationArray[3, 0:20] = generate_observations('oober', 20) + 1
+	observationArray[4, 0:19] = generate_observations('oober', 19) + 1
+
+	pi, A, B = BaumWelch(observationArray)
+
+	print 'pi\n' + str(pi)
+	print 'A\n' + str(A)
+	print 'B\n' + str(B)
+
 def trainHMMmodels():
 	trainedModels = [None] * len(gestures)
 	fileList = getAllFilesInFolder(DATA_FOLDER)
-	# clusterCenters = getClusterCenters()
 	kmeans = kMeans()
 	# print np.unique(kmeans.labels_)
 	print 'K-means done.'
@@ -275,13 +400,12 @@ def trainHMMmodels():
 		for f in fileList:
 			if f.startswith(g):
 				dataInFile = dataToNpArray(os.path.join(DATA_FOLDER, f))
-				# discretizedData = assignPointsToNearestCluster(dataInFile[1:7], clusterCenters)
 				discretizedData = kmeans.predict(dataInFile[:, 1:7]) + 1
 				# print np.unique(discretizedData)
 				observationList.append(discretizedData.reshape(discretizedData.size))
 
-				if maxT < dataInFile.shape[0]:
-					maxT = dataInFile.shape[0]
+				if maxT < discretizedData.size:
+					maxT = discretizedData.size
 
 		observationArray = np.zeros((len(observationList), maxT), dtype=int)
 		for i, o in enumerate(observationList):
@@ -290,14 +414,18 @@ def trainHMMmodels():
 		pi, A, B = BaumWelch(observationArray)
 		trainedModels[i] = (pi, A, B)
 
-	return clusterCenters, trainedModels
+	return kmeans, trainedModels
 
-def predict(trainedModels, x):
+def predict(trainedModels, data, kmeans):
 	threshold = 0.6
 	bestTillNow = -1
 	bestScore = -1
+
+	x = kmeans.predict(data[:, 1:7]) + 1
+
 	for i, t in enumerate(trainedModels):
 		p = calObservationPr(t, x)
+		print 'Score for ' + gestures[i] + ': ' + p
 
 		if p > bestScore:
 			bestScore = p
@@ -312,10 +440,12 @@ if __name__ == "__main__":
 	filename = "inf11.txt"
 	filename = "wave01.txt"
 
+	trainHMMmodelsWithDummyData()
+	exit()
+
 	# seeOrientation(filename)
 
-	# cl, ce = runKMeans(10, dataToNpArray(os.path.join(DATA_FOLDER, filename))[:, 1:7])
-	# print cl
-	# print ce
+	kmeans, trainedModels = trainHMMmodels()
 
-	trainHMMmodels()
+	dataInTestFile = dataToNpArray(os.path.join(DATA_FOLDER, filename))
+	print 'Prediction for ' + filename + ' is: ' + predict(trainedModels, dataInTestFile, kmeans)
