@@ -126,6 +126,75 @@ def inv_sampling(pdf):
 		if r <= p:
 			return i
 
+def trainHMMmodelsWithDummyData():
+	observationArray = np.zeros((15, 20), dtype=int)
+	observationArray[0, 0:17] = generate_observations('oober', 17) + 1
+	observationArray[1, 0:15] = generate_observations('oober', 15) + 1
+	observationArray[2, 0:20] = generate_observations('oober', 20) + 1
+	observationArray[3, 0:20] = generate_observations('oober', 20) + 1
+	observationArray[4, 0:19] = generate_observations('oober', 19) + 1
+	observationArray[5, 0:17] = generate_observations('oober', 17) + 1
+	observationArray[6, 0:15] = generate_observations('oober', 15) + 1
+	observationArray[7, 0:20] = generate_observations('oober', 20) + 1
+	observationArray[8, 0:20] = generate_observations('oober', 20) + 1
+	observationArray[9, 0:19] = generate_observations('oober', 19) + 1
+	observationArray[10, 0:17] = generate_observations('oober', 17) + 1
+	observationArray[11, 0:15] = generate_observations('oober', 15) + 1
+	observationArray[12, 0:20] = generate_observations('oober', 20) + 1
+	observationArray[13, 0:20] = generate_observations('oober', 20) + 1
+	observationArray[14, 0:19] = generate_observations('oober', 19) + 1
+
+	pi, A, B = BaumWelch(observationArray)
+
+	np.set_printoptions(precision=2)
+	print 'pi\n' + str(pi)
+	print 'A\n' + str(A)
+	print 'B\n' + str(B)
+
+	observationArray2 = np.zeros((15, 20), dtype=int)
+	observationArray2[0, 0:17] = generate_observations('nowaymo', 17) + 1
+	observationArray2[1, 0:15] = generate_observations('nowaymo', 15) + 1
+	observationArray2[2, 0:20] = generate_observations('nowaymo', 20) + 1
+	observationArray2[3, 0:20] = generate_observations('nowaymo', 20) + 1
+	observationArray2[4, 0:19] = generate_observations('nowaymo', 19) + 1
+	observationArray2[5, 0:17] = generate_observations('nowaymo', 17) + 1
+	observationArray2[6, 0:15] = generate_observations('nowaymo', 15) + 1
+	observationArray2[7, 0:20] = generate_observations('nowaymo', 20) + 1
+	observationArray2[8, 0:20] = generate_observations('nowaymo', 20) + 1
+	observationArray2[9, 0:19] = generate_observations('nowaymo', 19) + 1
+	observationArray2[10, 0:17] = generate_observations('nowaymo', 17) + 1
+	observationArray2[11, 0:15] = generate_observations('nowaymo', 15) + 1
+	observationArray2[12, 0:20] = generate_observations('nowaymo', 20) + 1
+	observationArray2[13, 0:20] = generate_observations('nowaymo', 20) + 1
+	observationArray2[14, 0:19] = generate_observations('nowaymo', 19) + 1
+
+	pi2, A2, B2 = BaumWelch(observationArray2)
+
+	np.set_printoptions(precision=2)
+	print 'pi\n' + str(pi2)
+	print 'A\n' + str(A2)
+	print 'B\n' + str(B2)
+
+	somedata = generate_observations('nowaymo', 19) + 1
+	print calObservationPr((pi2, A2, B2), somedata)
+	print calObservationPr((pi, A, B), somedata)
+
+	somedata = generate_observations('nowaymo', 19) + 1
+	print calObservationPr((pi2, A2, B2), somedata)
+	print calObservationPr((pi, A, B), somedata)
+
+	somedata = generate_observations('nowaymo', 19) + 1
+	print calObservationPr((pi2, A2, B2), somedata)
+	print calObservationPr((pi, A, B), somedata)
+
+	somedata = generate_observations('oober', 19) + 1
+	print calObservationPr((pi2, A2, B2), somedata)
+	print calObservationPr((pi, A, B), somedata)
+
+	somedata = generate_observations('oober', 19) + 1
+	print calObservationPr((pi2, A2, B2), somedata)
+	print calObservationPr((pi, A, B), somedata)
+	
 # Dummy data to check algorithm
 ########################################################################################################
 
@@ -200,7 +269,7 @@ def logForwardPass(logAlpha, A, B, Ob):
 
 	for t in range(T - 1):
 		for i in range(N):
-			logAlpha[t+1, i] = logsumexp(logAlpha[t, :] + np.log(A[:, i]))
+			logAlpha[t+1, i] = logsumexp(logAlpha[t, :].reshape(N, 1) + np.log(A[:, i]).reshape(N, 1))
 		logAlpha[t+1, :] = logAlpha[t+1, :] + np.log(B[:, Ob[t+1]-1])
 
 	return logAlpha
@@ -210,7 +279,7 @@ def logBackwardPass(logBeta, A, B, Ob):
 
 	for t in reversed(range(T-1)):
 		for i in range(N):
-			logBeta[t, i] = logsumexp(np.log(A[i, :]) + np.log(B[:, Ob[t+1]-1]) + logBeta[t+1, :])
+			logBeta[t, i] = logsumexp(np.log(A[i, :]).reshape(N, 1) + np.log(B[:, Ob[t+1]-1]).reshape(N, 1) + logBeta[t+1, :].reshape(N, 1))
 
 	return logBeta
 
@@ -244,8 +313,7 @@ def logForwardBackward(pi, A, B, Ob):
 def computeLogZeta(A, B, logAlpha, logBeta, Ob):
 	TT = Ob.size
 	T = np.count_nonzero(Ob)
-	# logZeta = np.full((TT, N, N), -1 * np.inf)
-	logZeta = np.full((TT, N, N), 1000)
+	logZeta = np.full((TT, N, N), -1 * np.inf)
 
 	# Initialize
 	logZeta[0:T-1, :, :] = np.tile(logAlpha[0:T-1, :].reshape(T-1, N, 1), (1, 1, N))
@@ -254,7 +322,7 @@ def computeLogZeta(A, B, logAlpha, logBeta, Ob):
 	logZeta[0:T-1, :, :] = logZeta[0:T-1, :, :] + np.tile(logBeta[1:T, :].reshape(T-1, 1, N), (1, N, 1))
 	logZeta[0:T-1, :, :] = logZeta[0:T-1, :, :] + np.tile(np.log(np.transpose(B[:, Ob[1:T] - 1])).reshape(T-1, 1, N), (1, N, 1))
 
-	logZeta[0:T-1, :, :] = np.subtract(logZeta[0:T-1, :, :], np.tile(logsumexp(logZeta[0:T-1, :, :], axis=(1, 2)).reshape(T-1, 1, 1), (1, N, N)))
+	logZeta[0:T-1, :, :] = np.subtract(logZeta[0:T-1, :, :], logsumexp(logZeta[0:T-1, :, :], axis=(1, 2))[:, None, None])
 
 	return logZeta
 
@@ -267,7 +335,6 @@ def computeNewA(logGammaArray, logZetaArray, ObArray):
 	numerator = np.zeros((N, N))
 	for e in range(E):
 		T = np.count_nonzero(ObArray[e])
-		# print np.exp(logsumexp(logZetaArray[e, 0:T-1, :, :], axis=0)).shape
 		numerator = numerator + np.exp(logsumexp(logZetaArray[e, 0:T-1, :, :], axis=0))
 	# print numerator
 
@@ -276,7 +343,7 @@ def computeNewA(logGammaArray, logZetaArray, ObArray):
 		T = np.count_nonzero(ObArray[e])
 		denominator = denominator + np.exp(logsumexp(logGammaArray[e, 0:T-1, :], axis=0))
 
-	return numerator/denominator
+	return numerator/denominator[:,None]
 
 def computeNewB(logGammaArray, ObArray):
 	E = ObArray.shape[0]
@@ -320,7 +387,7 @@ def BaumWelch(ObservationArray):
 
 	# Initialize model parameters
 	A = np.random.rand(N, N) + 0.001
-	A = A / np.sum(A, axis=1)
+	A = A / np.sum(A, axis=1).reshape(N, 1)
 	B = np.random.rand(N, M) + 0.001
 	B = B / np.sum(B, axis=1).reshape(N, 1)
 	pi = np.ones(N)
@@ -349,11 +416,7 @@ def BaumWelch(ObservationArray):
 		# Maximization step
 		pi = computeNewPi(logGammaArray)
 		A = computeNewA(logGammaArray, logZetaArray, ObservationArray)
-		print np.sum(A, axis=1)
-		# exit()
 		B = computeNewB(logGammaArray, ObservationArray)
-		print np.sum(B, axis=1)
-		exit()
 
 		# Evaluate log-likelihood
 		ll_new = np.sum(np.exp(logsumexp(logAlphaT, axis=1))) / E
@@ -371,20 +434,6 @@ def BaumWelch(ObservationArray):
 	return pi, A, B
 
 ########################################################################################################
-
-def trainHMMmodelsWithDummyData():
-	observationArray = np.zeros((1, 20), dtype=int)
-	observationArray[0, 0:17] = generate_observations('oober', 17) + 1
-	# observationArray[1, 0:15] = generate_observations('oober', 15) + 1
-	# observationArray[2, 0:20] = generate_observations('oober', 20) + 1
-	# observationArray[3, 0:20] = generate_observations('oober', 20) + 1
-	# observationArray[4, 0:19] = generate_observations('oober', 19) + 1
-
-	pi, A, B = BaumWelch(observationArray)
-
-	print 'pi\n' + str(pi)
-	print 'A\n' + str(A)
-	print 'B\n' + str(B)
 
 def trainHMMmodels():
 	trainedModels = [None] * len(gestures)
