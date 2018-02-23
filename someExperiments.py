@@ -244,14 +244,17 @@ def logForwardBackward(pi, A, B, Ob):
 def computeLogZeta(A, B, logAlpha, logBeta, Ob):
 	TT = Ob.size
 	T = np.count_nonzero(Ob)
-	logZeta = np.full((TT, N, N), -1 * np.inf)
+	# logZeta = np.full((TT, N, N), -1 * np.inf)
+	logZeta = np.full((TT, N, N), 1000)
 
 	# Initialize
-	logZeta = np.tile(logAlpha.reshape(TT, N, 1), (1, 1, N))
-	logZeta = logZeta + np.tile(logBeta.reshape(TT, 1, N), (1, N, 1))	
-	logZeta = logZeta + np.tile(np.log(A).reshape(1, N, N), (TT, 1, 1))	
-	logZeta = logZeta + np.tile(np.log(np.transpose(B[:, Ob - 1])).reshape(TT, 1, N), (1, N, 1))	
-	logZeta[0:T, :, :] = np.subtract(logZeta[0:T, :, :], np.tile(logsumexp(logZeta[0:T, :, :], axis=(1, 2)).reshape(T, 1, 1), (1, N, N)))
+	logZeta[0:T-1, :, :] = np.tile(logAlpha[0:T-1, :].reshape(T-1, N, 1), (1, 1, N))
+	logZeta[0:T-1, :, :] = logZeta[0:T-1, :, :] + np.tile(np.log(A).reshape(1, N, N), (T-1, 1, 1))	
+
+	logZeta[0:T-1, :, :] = logZeta[0:T-1, :, :] + np.tile(logBeta[1:T, :].reshape(T-1, 1, N), (1, N, 1))
+	logZeta[0:T-1, :, :] = logZeta[0:T-1, :, :] + np.tile(np.log(np.transpose(B[:, Ob[1:T] - 1])).reshape(T-1, 1, N), (1, N, 1))
+
+	logZeta[0:T-1, :, :] = np.subtract(logZeta[0:T-1, :, :], np.tile(logsumexp(logZeta[0:T-1, :, :], axis=(1, 2)).reshape(T-1, 1, 1), (1, N, N)))
 
 	return logZeta
 
@@ -264,12 +267,14 @@ def computeNewA(logGammaArray, logZetaArray, ObArray):
 	numerator = np.zeros((N, N))
 	for e in range(E):
 		T = np.count_nonzero(ObArray[e])
-		numerator = numerator + np.exp(logsumexp(logZetaArray[e, 0:T-1, :, :], axis=(0,1)))
+		# print np.exp(logsumexp(logZetaArray[e, 0:T-1, :, :], axis=0)).shape
+		numerator = numerator + np.exp(logsumexp(logZetaArray[e, 0:T-1, :, :], axis=0))
+	# print numerator
 
-	denominator = np.ones((N))
+	denominator = np.zeros((N))
 	for e in range(E):
 		T = np.count_nonzero(ObArray[e])
-		denominator = denominator + np.exp(logsumexp(logGammaArray[e, 0:T-1, :], axis=(0,1)))
+		denominator = denominator + np.exp(logsumexp(logGammaArray[e, 0:T-1, :], axis=0))
 
 	return numerator/denominator
 
@@ -277,23 +282,17 @@ def computeNewB(logGammaArray, ObArray):
 	E = ObArray.shape[0]
 
 	numerator = np.full((N, M), -1 * np.inf)
-	for e in range(E):
-		T = np.count_nonzero(ObArray[e])
-		for i in range(N):
-			for x in range(M):
-				correct_t = (ObArray[e, :] == (x+1))
-				# print np.count_nonzero(correct_t),
-				if np.count_nonzero(correct_t) > 0:
-					if numerator[i, x] != (-np.inf):
-						numerator[i, x] = np.logaddexp(numerator[i, x], logsumexp(logGammaArray[e, correct_t, i]))
-					else:
-						numerator[i, x] = logsumexp(logGammaArray[e, correct_t, i])
+	for i in range(N):
+		for x in range(M):
+			correct_t = (ObArray == (x+1))
+			if np.count_nonzero(correct_t) > 0:
+				numerator[i, x] = logsumexp(logGammaArray[correct_t, i])
 	numerator = np.exp(numerator)
 
-	denominator = np.ones((N))
+	denominator = np.zeros((N))
 	for e in range(E):
 		T = np.count_nonzero(ObArray[e])
-		denominator = denominator + np.exp(logsumexp(logGammaArray[e, 0:T, :], axis=(0,1)))
+		denominator = denominator + np.exp(logsumexp(logGammaArray[e, 0:T, :], axis=0))
 
 	return numerator/denominator[:,None]
 
@@ -350,6 +349,8 @@ def BaumWelch(ObservationArray):
 		# Maximization step
 		pi = computeNewPi(logGammaArray)
 		A = computeNewA(logGammaArray, logZetaArray, ObservationArray)
+		print np.sum(A, axis=1)
+		# exit()
 		B = computeNewB(logGammaArray, ObservationArray)
 		print np.sum(B, axis=1)
 		exit()
@@ -372,12 +373,12 @@ def BaumWelch(ObservationArray):
 ########################################################################################################
 
 def trainHMMmodelsWithDummyData():
-	observationArray = np.zeros((5, 20), dtype=int)
+	observationArray = np.zeros((1, 20), dtype=int)
 	observationArray[0, 0:17] = generate_observations('oober', 17) + 1
-	observationArray[1, 0:15] = generate_observations('oober', 15) + 1
-	observationArray[2, 0:20] = generate_observations('oober', 20) + 1
-	observationArray[3, 0:20] = generate_observations('oober', 20) + 1
-	observationArray[4, 0:19] = generate_observations('oober', 19) + 1
+	# observationArray[1, 0:15] = generate_observations('oober', 15) + 1
+	# observationArray[2, 0:20] = generate_observations('oober', 20) + 1
+	# observationArray[3, 0:20] = generate_observations('oober', 20) + 1
+	# observationArray[4, 0:19] = generate_observations('oober', 19) + 1
 
 	pi, A, B = BaumWelch(observationArray)
 
