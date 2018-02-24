@@ -2,6 +2,7 @@ import os
 import csv
 import pdb
 import math
+import random
 import numpy as np
 from scipy.misc import logsumexp
 from sklearn.cluster import KMeans
@@ -15,12 +16,11 @@ from plots import plotPredictions
 from kmeans import *
 
 DATA_FOLDER = 'train_data'
+TEST_FOLDER = 'test_data'
 gestures = ['beat3', 'beat4', 'circle', 'eight', 'inf', 'wave']
 
 N = 10 # Number of hidden states
 M = 30 # Number of observation classes
-# N = 4 # Dummy
-# M = 5 # Dummy
 
 ########################################################################################################
 
@@ -50,14 +50,13 @@ def seeOrientation(filename):
 	filterResult = checkGyroIntegration(gyroData, timestamps)
 	plotPredictions(filterResult, timestamps)
 
-def kMeans():
+def kMeans(fileList):
 	data = None
-	fileList = getAllFilesInFolder(DATA_FOLDER)
 	for f in fileList:
 		if data is None:
-			data = dataToNpArray(os.path.join(DATA_FOLDER, filename))[:, 1:7]
+			data = dataToNpArray(os.path.join(DATA_FOLDER, f))[:, 1:7]
 		else:
-			data = np.vstack((data, dataToNpArray(os.path.join(DATA_FOLDER, filename))[:, 1:7]))
+			data = np.vstack((data, dataToNpArray(os.path.join(DATA_FOLDER, f))[:, 1:7]))
 	
 	kmeans = KMeans(n_clusters=M).fit(data)
 	return kmeans
@@ -127,22 +126,28 @@ def inv_sampling(pdf):
 			return i
 
 def trainHMMmodelsWithDummyData():
-	observationArray = np.zeros((15, 20), dtype=int)
-	observationArray[0, 0:17] = generate_observations('oober', 17) + 1
-	observationArray[1, 0:15] = generate_observations('oober', 15) + 1
-	observationArray[2, 0:20] = generate_observations('oober', 20) + 1
-	observationArray[3, 0:20] = generate_observations('oober', 20) + 1
-	observationArray[4, 0:19] = generate_observations('oober', 19) + 1
-	observationArray[5, 0:17] = generate_observations('oober', 17) + 1
-	observationArray[6, 0:15] = generate_observations('oober', 15) + 1
-	observationArray[7, 0:20] = generate_observations('oober', 20) + 1
-	observationArray[8, 0:20] = generate_observations('oober', 20) + 1
-	observationArray[9, 0:19] = generate_observations('oober', 19) + 1
-	observationArray[10, 0:17] = generate_observations('oober', 17) + 1
-	observationArray[11, 0:15] = generate_observations('oober', 15) + 1
-	observationArray[12, 0:20] = generate_observations('oober', 20) + 1
-	observationArray[13, 0:20] = generate_observations('oober', 20) + 1
-	observationArray[14, 0:19] = generate_observations('oober', 19) + 1
+	global N
+	global M
+
+	N = 4 # Dummy
+	M = 5 # Dummy
+
+	observationArray = np.zeros((15, 80), dtype=int)
+	observationArray[0, 0:77] = generate_observations('oober', 77) + 1
+	observationArray[1, 0:75] = generate_observations('oober', 75) + 1
+	observationArray[2, 0:80] = generate_observations('oober', 80) + 1
+	observationArray[3, 0:80] = generate_observations('oober', 80) + 1
+	observationArray[4, 0:79] = generate_observations('oober', 79) + 1
+	observationArray[5, 0:77] = generate_observations('oober', 77) + 1
+	observationArray[6, 0:75] = generate_observations('oober', 75) + 1
+	observationArray[7, 0:80] = generate_observations('oober', 80) + 1
+	observationArray[8, 0:80] = generate_observations('oober', 80) + 1
+	observationArray[9, 0:79] = generate_observations('oober', 79) + 1
+	observationArray[10, 0:77] = generate_observations('oober', 77) + 1
+	observationArray[11, 0:75] = generate_observations('oober', 75) + 1
+	observationArray[12, 0:80] = generate_observations('oober', 80) + 1
+	observationArray[13, 0:80] = generate_observations('oober', 80) + 1
+	observationArray[14, 0:79] = generate_observations('oober', 79) + 1
 
 	pi, A, B = BaumWelch(observationArray)
 
@@ -151,22 +156,22 @@ def trainHMMmodelsWithDummyData():
 	print 'A\n' + str(A)
 	print 'B\n' + str(B)
 
-	observationArray2 = np.zeros((15, 20), dtype=int)
-	observationArray2[0, 0:17] = generate_observations('nowaymo', 17) + 1
-	observationArray2[1, 0:15] = generate_observations('nowaymo', 15) + 1
-	observationArray2[2, 0:20] = generate_observations('nowaymo', 20) + 1
-	observationArray2[3, 0:20] = generate_observations('nowaymo', 20) + 1
-	observationArray2[4, 0:19] = generate_observations('nowaymo', 19) + 1
-	observationArray2[5, 0:17] = generate_observations('nowaymo', 17) + 1
-	observationArray2[6, 0:15] = generate_observations('nowaymo', 15) + 1
-	observationArray2[7, 0:20] = generate_observations('nowaymo', 20) + 1
-	observationArray2[8, 0:20] = generate_observations('nowaymo', 20) + 1
-	observationArray2[9, 0:19] = generate_observations('nowaymo', 19) + 1
-	observationArray2[10, 0:17] = generate_observations('nowaymo', 17) + 1
-	observationArray2[11, 0:15] = generate_observations('nowaymo', 15) + 1
-	observationArray2[12, 0:20] = generate_observations('nowaymo', 20) + 1
-	observationArray2[13, 0:20] = generate_observations('nowaymo', 20) + 1
-	observationArray2[14, 0:19] = generate_observations('nowaymo', 19) + 1
+	observationArray2 = np.zeros((15, 80), dtype=int)
+	observationArray2[0, 0:77] = generate_observations('nowaymo', 77) + 1
+	observationArray2[1, 0:75] = generate_observations('nowaymo', 75) + 1
+	observationArray2[2, 0:80] = generate_observations('nowaymo', 80) + 1
+	observationArray2[3, 0:80] = generate_observations('nowaymo', 80) + 1
+	observationArray2[4, 0:79] = generate_observations('nowaymo', 79) + 1
+	observationArray2[5, 0:77] = generate_observations('nowaymo', 77) + 1
+	observationArray2[6, 0:75] = generate_observations('nowaymo', 75) + 1
+	observationArray2[7, 0:80] = generate_observations('nowaymo', 80) + 1
+	observationArray2[8, 0:80] = generate_observations('nowaymo', 80) + 1
+	observationArray2[9, 0:79] = generate_observations('nowaymo', 79) + 1
+	observationArray2[10, 0:77] = generate_observations('nowaymo', 77) + 1
+	observationArray2[11, 0:75] = generate_observations('nowaymo', 75) + 1
+	observationArray2[12, 0:80] = generate_observations('nowaymo', 80) + 1
+	observationArray2[13, 0:80] = generate_observations('nowaymo', 80) + 1
+	observationArray2[14, 0:79] = generate_observations('nowaymo', 79) + 1
 
 	pi2, A2, B2 = BaumWelch(observationArray2)
 
@@ -175,25 +180,18 @@ def trainHMMmodelsWithDummyData():
 	print 'A\n' + str(A2)
 	print 'B\n' + str(B2)
 
-	somedata = generate_observations('nowaymo', 19) + 1
-	print calObservationPr((pi2, A2, B2), somedata)
-	print calObservationPr((pi, A, B), somedata)
-
-	somedata = generate_observations('nowaymo', 19) + 1
-	print calObservationPr((pi2, A2, B2), somedata)
-	print calObservationPr((pi, A, B), somedata)
-
-	somedata = generate_observations('nowaymo', 19) + 1
-	print calObservationPr((pi2, A2, B2), somedata)
-	print calObservationPr((pi, A, B), somedata)
-
-	somedata = generate_observations('oober', 19) + 1
-	print calObservationPr((pi2, A2, B2), somedata)
-	print calObservationPr((pi, A, B), somedata)
-
-	somedata = generate_observations('oober', 19) + 1
-	print calObservationPr((pi2, A2, B2), somedata)
-	print calObservationPr((pi, A, B), somedata)
+	models = ['nowaymo', 'oober']
+	NN = 100
+	numCorrect = 0
+	for t in range(NN):
+		choice = random.randint(0, 1)
+		somedata = generate_observations(models[choice], 79) + 1
+		if calObservationPr((pi2, A2, B2), somedata) > calObservationPr((pi, A, B), somedata):
+			prediction = 'nowaymo'
+		else:
+			prediction = 'oober'
+		numCorrect = numCorrect + (prediction == models[choice])
+	print 'Accuracy: ' + str((numCorrect * 1.0)/NN)
 
 # Dummy data to check algorithm
 ########################################################################################################
@@ -347,11 +345,10 @@ def computeNewB(logGammaArray, ObArray):
 	E = ObArray.shape[0]
 
 	numerator = np.full((N, M), -1 * np.inf)
-	for i in range(N):
-		for x in range(M):
-			correct_t = (ObArray == (x+1))
-			if np.count_nonzero(correct_t) > 0:
-				numerator[i, x] = logsumexp(logGammaArray[correct_t, i])
+	for x in range(M):
+		correct_t = (ObArray == (x+1))
+		if np.count_nonzero(correct_t) > 0:
+			numerator[:, x] = logsumexp(logGammaArray[correct_t, :], axis=0)
 	numerator = np.exp(numerator)
 
 	denominator = np.zeros((N))
@@ -383,66 +380,81 @@ def calObservationPr(t, x):
 
 def BaumWelch(ObservationArray):
 
-	# Initialize model parameters
-	A = np.random.rand(N, N) + 0.001
-	A = A / np.sum(A, axis=1).reshape(N, 1)
-	B = np.random.rand(N, M) + 0.001
-	B = B / np.sum(B, axis=1).reshape(N, 1)
-	pi = np.ones(N)
-	pi = pi / np.sum(pi)
+	bestModel = 0, 0, 0
+	bestModelScore = -np.inf
+	maxTrials = 3
+	trialCount = 0
 
-	ll_old = 0
-	threshold = 1e-5
-	iterCount = 0
-	maxIterations = 25
-	TT = ObservationArray.shape[1]
-	E = ObservationArray.shape[0]
+	while trialCount < maxTrials:
 
-	while iterCount < maxIterations:
+		# Initialize model parameters
+		A = np.random.rand(N, N) + 0.001
+		A = A / np.sum(A, axis=1).reshape(N, 1)
+		B = np.random.rand(N, M) + 0.001
+		B = B / np.sum(B, axis=1).reshape(N, 1)
+		pi = np.ones(N)
+		pi = pi / np.sum(pi)
 
-		logGammaArray = np.zeros((E, TT, N))
-		logZetaArray = np.zeros((E, TT, N, N))
-		logAlphaT = np.zeros((E, N))
+		ll_old = 0
+		threshold = 1e-5
+		iterCount = 0
+		maxIterations = 100
+		TT = ObservationArray.shape[1]
+		E = ObservationArray.shape[0]
 
-		# Expectation step
-		for i, example in enumerate(ObservationArray):
-			logAlpha, logBeta, logGammaArray[i] = logForwardBackward(pi, A, B, ObservationArray[i])
-			logZetaArray[i] = computeLogZeta(A, B, logAlpha, logBeta, ObservationArray[i])
+		while iterCount < maxIterations:
 
-			logAlphaT[i] = logAlpha[np.count_nonzero(ObservationArray[i]) - 1, :]
+			logGammaArray = np.zeros((E, TT, N))
+			logZetaArray = np.zeros((E, TT, N, N))
+			logAlphaT = np.zeros((E, N))
 
-		# Maximization step
-		pi = computeNewPi(logGammaArray)
-		A = computeNewA(logGammaArray, logZetaArray, ObservationArray)
-		# print np.sum(A, axis=1)
-		B = computeNewB(logGammaArray, ObservationArray)
-		# print np.sum(B, axis=1)
+			# Expectation step
+			for i, example in enumerate(ObservationArray):
+				logAlpha, logBeta, logGammaArray[i] = logForwardBackward(pi, A, B, ObservationArray[i])
+				logZetaArray[i] = computeLogZeta(A, B, logAlpha, logBeta, ObservationArray[i])
 
-		# Evaluate log-likelihood
-		ll_new = np.sum(np.exp(logsumexp(logAlphaT, axis=1))) / E
-		print 'Log-likelihood at iteration ' + str(iterCount) + ' is ' + str(ll_new)
+				logAlphaT[i] = logAlpha[np.count_nonzero(ObservationArray[i]) - 1, :]
 
-		# break if low change
-		if abs(ll_new - ll_old) < threshold:
-			pass#break
-		else:
-			ll_old = ll_new
+			# Maximization step
+			pi = computeNewPi(logGammaArray)
+			A = computeNewA(logGammaArray, logZetaArray, ObservationArray)
+			# print np.sum(A, axis=1)
+			B = computeNewB(logGammaArray, ObservationArray)
+			# print np.sum(B, axis=1)
 
-		iterCount = iterCount + 1
+			# Evaluate log-likelihood
+			ll_new = logsumexp(logAlphaT) / E
+			print 'Log-likelihood at iteration ' + str(iterCount) + ' (trial=' + str(trialCount) + ') is\t' + str(ll_new)
+
+			# break if low change
+			if abs(ll_new - ll_old) < threshold:
+				pass#break
+			else:
+				ll_old = ll_new
+
+			iterCount = iterCount + 1
+
+		# check if this model is better
+		modelInThisTrial = pi, A, B
+		if ll_new > bestModelScore:
+			bestModel = modelInThisTrial
+			bestModelScore = ll_new
+
+		trialCount = trialCount + 1
 
 	# return final model parameters
-	return pi, A, B
+	return bestModel
 
 ########################################################################################################
 
-def trainHMMmodels():
+def trainHMMmodels(fileList):
 	trainedModels = [None] * len(gestures)
-	fileList = getAllFilesInFolder(DATA_FOLDER)
-	kmeans = kMeans()
+	kmeans = kMeans(fileList)
 	# print np.unique(kmeans.labels_)
 	print 'K-means done.'
 
 	for i, g in enumerate(gestures):
+		print 'Gesture: ' + g
 
 		observationList = []
 		maxT = 0
@@ -475,7 +487,7 @@ def predict(trainedModels, data, kmeans):
 
 	for i, t in enumerate(trainedModels):
 		p = calObservationPr(t, x)
-		print 'Score for ' + gestures[i] + ': ' + str(p)
+		print 'Score for ' + gestures[i] + ':\t' + str(p)
 
 		if p > bestScore:
 			bestScore = p
@@ -486,25 +498,68 @@ def predict(trainedModels, data, kmeans):
 	else:
 		return 'Something else'
 
-if __name__ == "__main__":
-	filename = "inf11.txt"
-	filename = "wave01.txt"
+def test(trainedModels, kmeans, fileList):
+	for f in fileList:
+		dataInTestFile = dataToNpArray(os.path.join(TEST_FOLDER, f))
+		print 'Prediction for ' + f + ' is: ' + predict(trainedModels, dataInTestFile, kmeans)
 
+def getTrainTestSplit(completeFileList):
+	pass
+
+def isPredictionCorrect(prediction, filename):
+	if filename[0] != 'b':
+		if prediction[0] == filename[0]:
+			return 1
+		else:
+			return 0
+	else:
+		if filename[0] != prediction[0]:
+			return 0
+		elif filename.startswith('beat3') and prediction.startswith('beat3'):
+			return 1
+		elif filename.startswith('beat4') and prediction.startswith('beat4'):
+			return 1
+		else:
+			return 0
+
+def crossValidate():
+	global N
+	global M
+
+	N_val = [7, 9, 10, 11, 12, 13, 75]
+	M_val = [80, 24, 28, 30, 32, 34, 36, 40]
+
+	trainFileList = [	'beat3_31.txt',  'circle18.txt',  'eight31.txt',  'inf13.txt',  'inf32.txt',   'wave05.txt'
+						'beat3_32.txt',  'circle13.txt',  'eight04.txt',  'eight32.txt',  'inf16.txt',  'wave01.txt',  'wave07.txt'
+						'beat4_31.txt',  'circle14.txt',  'circle32.txt',  'eight07.txt',  'inf18.txt',  'wave02.txt',  'wave31.txt'
+						'circle17.txt',  'eight01.txt',   'eight08.txt',  'inf11.txt',    'inf31.txt']
+	testFileList = ['eight02.txt', 'circle31.txt', 'inf112.txt', 'wave03.txt', 'wave32.txt', 'circle12.txt', 'beat4_32.txt',  ]
+
+	for n in N_val:
+		for m in M_val:
+			N = n
+			M = m
+
+			kmeans, trainedModels = trainHMMmodels(trainFileList)
+			numCorrect = 0
+
+			for f in testFileList:
+				dataInTestFile = dataToNpArray(os.path.join(DATA_FOLDER, f))
+				prediction = predict(trainedModels, dataInTestFile, kmeans)
+				print 'Prediction for file ' + f + ': ' + prediction
+				numCorrect = numCorrect + isPredictionCorrect(prediction, f)
+
+
+
+########################################################################################################
+
+if __name__ == "__main__":
 	# trainHMMmodelsWithDummyData()
 	# exit()
 
 	# seeOrientation(filename)
 
-	kmeans, trainedModels = trainHMMmodels()
+	kmeans, trainedModels = trainHMMmodels(getAllFilesInFolder(DATA_FOLDER))
+	print 'Done training.'
 
-	filename = "wave01.txt"
-	dataInTestFile = dataToNpArray(os.path.join(DATA_FOLDER, filename))
-	print 'Prediction for ' + filename + ' is: ' + predict(trainedModels, dataInTestFile, kmeans)
-
-	filename = "inf16.txt"
-	dataInTestFile = dataToNpArray(os.path.join(DATA_FOLDER, filename))
-	print 'Prediction for ' + filename + ' is: ' + predict(trainedModels, dataInTestFile, kmeans)
-
-	filename = "circle18.txt"
-	dataInTestFile = dataToNpArray(os.path.join(DATA_FOLDER, filename))
-	print 'Prediction for ' + filename + ' is: ' + predict(trainedModels, dataInTestFile, kmeans)
+	test(trainedModels, kmeans, getAllFilesInFolder(TEST_FOLDER))
