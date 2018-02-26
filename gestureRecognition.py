@@ -517,9 +517,6 @@ def test(trainedModels, kmeans, fileList):
 		dataInTestFile = dataToNpArray(os.path.join(TEST_FOLDER, f))
 		print 'Prediction for ' + f + ' is: ' + predict(trainedModels, dataInTestFile, kmeans)
 
-def getTrainTestSplit(completeFileList):
-	pass
-
 def isPredictionCorrect(prediction, filename):
 	if filename[0] != 'b':
 		if prediction[0] == filename[0]:
@@ -603,5 +600,5 @@ def experiments():
 if __name__ == "__main__":
 	# experiments()
 
-	trainAndSaveModel()
+	# trainAndSaveModel()
 	loadModelAndTest()
