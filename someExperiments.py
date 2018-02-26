@@ -19,8 +19,8 @@ DATA_FOLDER = 'train_data'
 TEST_FOLDER = 'test_data'
 gestures = ['beat3', 'beat4', 'circle', 'eight', 'inf', 'wave']
 
-N = 10 # Number of hidden states
-M = 30 # Number of observation classes
+N = 8 # Number of hidden states
+M = 8 # Number of observation classes
 
 ########################################################################################################
 
@@ -375,6 +375,20 @@ def calObservationPr(t, x):
 
 	return logLikelihood
 
+def initializeA():
+	A = np.random.rand(N, N) + 0.001
+
+	for i in range(N):
+		for j in range(N):
+			if j > i + (N/3):
+				A[i, j] = 0
+			elif j < i and ((i + (N/3)) < N):
+				A[i, j] = 0
+			elif j < i and (i + (N/3)) >= N and (i + (N/3) - N) < j:
+				A[i, j] = 0
+
+	A = A / np.sum(A, axis=1).reshape(N, 1)
+	return A
 
 ########################################################################################################
 
@@ -388,8 +402,7 @@ def BaumWelch(ObservationArray):
 	while trialCount < maxTrials:
 
 		# Initialize model parameters
-		A = np.random.rand(N, N) + 0.001
-		A = A / np.sum(A, axis=1).reshape(N, 1)
+		A = initializeA()
 		B = np.random.rand(N, M) + 0.001
 		B = B / np.sum(B, axis=1).reshape(N, 1)
 		pi = np.ones(N)
@@ -398,7 +411,7 @@ def BaumWelch(ObservationArray):
 		ll_old = 0
 		threshold = 1e-5
 		iterCount = 0
-		maxIterations = 100
+		maxIterations = 50
 		TT = ObservationArray.shape[1]
 		E = ObservationArray.shape[0]
 
@@ -526,17 +539,18 @@ def crossValidate():
 	global N
 	global M
 
-	N_val = [7, 9, 10, 11, 12, 13, 75]
-	M_val = [80, 24, 28, 30, 32, 34, 36, 40]
+	N_val = [3, 4, 5, 6, 7, 8, 9]
+	M_val = [6, 7, 8, 9]
 
-	trainFileList = [	'beat3_31.txt',  'circle18.txt',  'eight31.txt',  'inf13.txt',  'inf32.txt',   'wave05.txt'
-						'beat3_32.txt',  'circle13.txt',  'eight04.txt',  'eight32.txt',  'inf16.txt',  'wave01.txt',  'wave07.txt'
-						'beat4_31.txt',  'circle14.txt',  'circle32.txt',  'eight07.txt',  'inf18.txt',  'wave02.txt',  'wave31.txt'
-						'circle17.txt',  'eight01.txt',   'eight08.txt',  'inf11.txt',    'inf31.txt']
-	testFileList = ['eight02.txt', 'circle31.txt', 'inf112.txt', 'wave03.txt', 'wave32.txt', 'circle12.txt', 'beat4_32.txt',  ]
+	trainFileList = [	'beat3_31.txt',  'circle18.txt',  'inf13.txt',  'inf32.txt',   'wave05.txt', 'wave02.txt',  'wave31.txt',
+						'circle13.txt',  'inf16.txt',  'wave01.txt',  'wave07.txt', 'eight01.txt',   'eight08.txt', 'inf31.txt',
+						'beat4_31.txt',  'circle32.txt',  'eight07.txt',  'inf18.txt',  'circle17.txt',  'eight32.txt', 
+						'eight02.txt', 'circle31.txt', 'wave03.txt', 'wave32.txt', 'circle12.txt', 'beat4_32.txt']
+	testFileList = ['circle14.txt',  'inf11.txt', 'wave07.txt', 'beat3_32.txt',  'eight04.txt',  'eight31.txt', 'inf112.txt']
 
-	for n in N_val:
-		for m in M_val:
+	res = np.zeros((len(N_val), len(M_val)))
+	for ni, n in enumerate(N_val):
+		for mi, m in enumerate(M_val):
 			N = n
 			M = m
 
@@ -549,17 +563,27 @@ def crossValidate():
 				print 'Prediction for file ' + f + ': ' + prediction
 				numCorrect = numCorrect + isPredictionCorrect(prediction, f)
 
+			res[ni, mi] = (numCorrect * 1.0)/len(testFileList)
+			print 'Stats for (N,M)=(' + str(n) + ',' + str(m) + ') - ' + str(res[ni, mi])
+
+	print res
 
 
 ########################################################################################################
 
 if __name__ == "__main__":
+	# seeOrientation(filename)
+
 	# trainHMMmodelsWithDummyData()
 	# exit()
 
-	# seeOrientation(filename)
+	# crossValidate()
+	# exit()
 
 	kmeans, trainedModels = trainHMMmodels(getAllFilesInFolder(DATA_FOLDER))
 	print 'Done training.'
+	print trainedModels[0][1]
+	print trainedModels[1][1]
+	print trainedModels[2][1]
 
 	test(trainedModels, kmeans, getAllFilesInFolder(TEST_FOLDER))
