@@ -2,6 +2,7 @@ import os
 import csv
 import pdb
 import math
+import pickle
 import random
 import numpy as np
 from scipy.misc import logsumexp
@@ -568,10 +569,21 @@ def crossValidate():
 
 	print res
 
+def trainAndSaveModel():
+	kmeans, trainedModels = trainHMMmodels(getAllFilesInFolder(DATA_FOLDER))
+
+	with open('model.pkl', 'wb') as p:
+		pickle.dump((kmeans, trainedModels), p, protocol=pickle.HIGHEST_PROTOCOL)
+
+def loadModelAndTest():
+	with open('model.pkl', 'rb') as p:
+		kmeans, trainedModels = pickle.load(p)
+
+	test(trainedModels, kmeans, getAllFilesInFolder(TEST_FOLDER))
 
 ########################################################################################################
 
-if __name__ == "__main__":
+def experiments():
 	# seeOrientation(filename)
 
 	# trainHMMmodelsWithDummyData()
@@ -587,3 +599,9 @@ if __name__ == "__main__":
 	print trainedModels[2][1]
 
 	test(trainedModels, kmeans, getAllFilesInFolder(TEST_FOLDER))
+
+if __name__ == "__main__":
+	# experiments()
+
+	trainAndSaveModel()
+	loadModelAndTest()
