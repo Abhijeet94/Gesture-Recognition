@@ -597,6 +597,8 @@ def experiments():
 
 	test(trainedModels, kmeans, getAllFilesInFolder(TEST_FOLDER))
 
+	exit()
+
 if __name__ == "__main__":
 	# experiments()
 
